@@ -1,0 +1,8 @@
+{
+    "type":"names",
+    "config":{"A":"ivan@alumchat.xyz", 
+        "B":"ddeleon@alumchat.xyz", 
+        "C":"mvasquez@alumchat.xyz", 
+        "D":"cas181202@alumchat.xyz",
+    },
+}
