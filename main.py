@@ -87,7 +87,26 @@ class Client(slixmpp.ClientXMPP):
                     else:
                         pass
             elif self.algoritmo == '2':
-                pass
+                #DISTANCE VECTOR: SE LE MANDA AL VECINO CON DISTANCIA MÁS CORTA
+                print('Este es el metodo de reenviar de distance vector')
+                print(message)
+                if message[2] == self.jid:
+                    print("Este mensaje es para mi >> " +  message[6])
+                else:
+                    if message[3] != '0':
+                        lista = message[4].split(",")
+                        if self.nodo not in lista:
+                            message[4] = message[4] + "," + str(self.nodo)
+                            message[3] = str(int(message[3]) - 1)
+                            StrMessage = "|".join(message)
+                            for i in self.nodes:
+                                self.send_message(
+                                    mto=self.names[i],
+                                    mbody=StrMessage,
+                                    mtype='chat' 
+                                )  
+                    else:
+                        pass
             elif self.algoritmo == '3':
                 pass
         elif message[0] == '2':
@@ -147,6 +166,16 @@ class Tree():
                 G.add_edge(key, i)
         
         return G
+
+def listToString(s): 
+    
+    str1 = "" 
+    
+    for ele in s: 
+        str1 += ele  
+    
+    # return string  
+    return str1 
     
 # Funcion para manejar el cliente
 async def main(xmpp: Client):
@@ -171,6 +200,29 @@ async def main(xmpp: Client):
                                 mbody=mensaje,
                                 mtype='chat' 
                             )  
+                    elif xmpp.algoritmo == '2':
+                        tableContact = []
+                        mensaje = "2|" + str(xmpp.jid) + "|" + str(destinatario) + "|" + str(xmpp.graph.number_of_nodes()) + "||" + str(xmpp.nodo) + "|" + str(mensaje)
+                        print(xmpp)
+                        graph = xmpp.graph
+                        
+                        """path=nx.all_pairs_shortest_path(graph)
+                        print(path["C"]["A"])"""
+                        for i in xmpp.nodes:
+                            """xmpp.send_message(
+                                mto=xmpp.names[i],
+                                mbody=mensaje,
+                                mtype='chat' 
+                            )"""
+                            tableContact.append([i, graph.nodes[i]["jid"]])
+                        print(tableContact)
+                        tableContent = ' '.join(str(e) for e in tableContact)
+                        for i in xmpp.nodes:
+                            xmpp.send_message(
+                                mto=xmpp.names[i],
+                                mbody=tableContent,
+                                mtype='chat' 
+                            ) 
                     else:
                         xmpp.send_message(
                             mto=destinatario,
@@ -185,8 +237,6 @@ async def main(xmpp: Client):
 
 
 if __name__ == "__main__":
-
-
     lector_topo = open("topo.txt", "r", encoding="utf8")
     lector_names = open("names.txt", "r", encoding="utf8")
     topo_string = lector_topo.read()
@@ -197,7 +247,7 @@ if __name__ == "__main__":
     #introducción de parámetros
     jid = input("Ingrese su nombre de usuario: ")
     pswd = input("Ingrese su contraseña: ")
-    alg = input("Ingrese el algoritmo seleccionado (Flooding > 1): ") 
+    alg = input("Ingrese el algoritmo seleccionado (Flooding >> 1 | Distance vector routing >> 2): ") 
 
     tree = Tree()
 
