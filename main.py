@@ -60,7 +60,6 @@ class Client(slixmpp.ClientXMPP):
     # Recibir mensajes
     async def message(self, msg):
         if msg['type'] in ('normal', 'chat'):
-            #await aprint("\n{}".format(msg['body']))
             await self.reply_message(msg['body'])
 
     # Esta funcion la pueden usar para reenviar sus mensajes
@@ -68,6 +67,7 @@ class Client(slixmpp.ClientXMPP):
         #await aprint(msg)
         message = msg.split('|')
         await aprint(message)
+
         if message[0] == '1':
             print('Este es el metodo de reenviar')
             if self.algoritmo == '1':
@@ -92,6 +92,8 @@ class Client(slixmpp.ClientXMPP):
                 #DISTANCE VECTOR: SE LE MANDA AL VECINO CON DISTANCIA MÁS CORTA
                 print('Este es el metodo de reenviar de distance vector')
                 print(message)
+                sendto= message[6].split('*')
+                #sendto= sendto[1].split('#')
                 if message[2] == self.jid:
                     print("Este mensaje es para mi >> " +  message[6])
                 else:
@@ -102,9 +104,9 @@ class Client(slixmpp.ClientXMPP):
                             message[4] = message[4] + "," + str(self.nodo)
                             message[3] = str(int(message[3]) - 1)
                             StrMessage = "|".join(message)
-                            for i in self.nodes:
-                                self.send_message(
-                                    mto=self.names[i],
+                            #for i in self.nodes:
+                            self.send_message(
+                                    mto=sendto,
                                     mbody=StrMessage,
                                     mtype='chat' 
                                 )  
@@ -204,7 +206,7 @@ async def main(xmpp: Client):
                                 mtype='chat' 
                             )  
                     elif xmpp.algoritmo == '2':
-                        tableContact = []
+                        
                         mensaje = "1|" + str(xmpp.jid) + "|" + str(destinatario) + "|" + str(xmpp.graph.number_of_nodes()) + "||" + str(xmpp.nodo) + "|" + str(mensaje)
                         print(xmpp)
                         graph = xmpp.graph
@@ -214,14 +216,13 @@ async def main(xmpp: Client):
                             if (d['jid'] == destinatario):
                                 destiny = p
                         
-                        """print(origin)
-                        print(destiny) """
-                        path=nx.nx.shortest_path(xmpp.graph, origin, destiny)
+
+                        path=nx.shortest_path(xmpp.graph, origin, destiny)
                         print("ESTE ES EL PATH")
                         print(path)
-                         
                         path.pop(0)
                         sendto = path[0]
+                        print("NEXT: ", sendto)
                         mail = ""
                         for (p, d) in xmpp.graph.nodes(data=True):
                             print(p,d)
@@ -240,7 +241,6 @@ async def main(xmpp: Client):
                             mtype='chat' 
                         )
                         
-                        #print(path["C"]["A"])
                         
                     else:
                         xmpp.send_message(

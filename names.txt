@@ -4,5 +4,6 @@
         "B":"cas181202@alumchat.xyz", 
         "C":"vas18250@alumchat.xyz", 
         "D":"ddeleon@alumchat.xyz",
+        "E":"san18962@alumchat.xyz"
     },
 }
