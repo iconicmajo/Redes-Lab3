@@ -19,6 +19,8 @@ from aioconsole import aprint
 from datetime import datetime
 import slixmpp
 import networkx as nx
+import random
+
 
 class Client(slixmpp.ClientXMPP):
     def __init__(self, jid, password, algoritmo, nodo, nodes, names, graph):
@@ -33,7 +35,7 @@ class Client(slixmpp.ClientXMPP):
         self.nodes = nodes
         # self.nodos = nodos
         self.schedule(name="echo", callback=self.echo_message, seconds=10, repeat=True)
-        #self.schedule(name="update", callback=self.update_message, seconds=15, repeat=True)
+        self.schedule(name="update", callback=self.update_message, seconds=2, repeat=True)
         
         # Manejar los eventos
         self.connected_event = asyncio.Event()
@@ -65,7 +67,7 @@ class Client(slixmpp.ClientXMPP):
     async def reply_message(self, msg):
         #await aprint(msg)
         message = msg.split('|')
-        #await aprint(message)
+        await aprint(message)
         if message[0] == '1':
             print('Este es el metodo de reenviar')
             if self.algoritmo == '1':
@@ -93,6 +95,7 @@ class Client(slixmpp.ClientXMPP):
                 if message[2] == self.jid:
                     print("Este mensaje es para mi >> " +  message[6])
                 else:
+                    print("ENTRA A ESTO QUE YO QUIERO QUE ENTRE")
                     if message[3] != '0':
                         lista = message[4].split(",")
                         if self.nodo not in lista:
@@ -129,7 +132,7 @@ class Client(slixmpp.ClientXMPP):
             else:
                 difference = float(message[6]) - float(message[4])
                 # await aprint("La diferencia es de: ", difference)
-                self.graph.nodes[message[5]]['distance'] = difference
+                self.graph.nodes[message[5]]['weight'] = difference
                 # print(self.graph.nodes.data())
         else:
             pass
@@ -149,7 +152,14 @@ class Client(slixmpp.ClientXMPP):
 
     def update_message(self):
         if self.algoritmo == '2':
-                pass
+            for i in self.nodes:
+                """for j in self.graph.neighbors(i):
+                    print(j)"""
+                self.graph.nodes[i]["neighbors"] = self.graph.neighbors(i)
+            
+            #for n in self.graph.nodes:
+            neigh = nx.graph.get_node_attributes(self.graph,'neighbors')
+
         elif self.algoritmo == '3':
             pass
 
@@ -163,23 +173,16 @@ class Tree():
         #agregar vertice
         for key, value in topo["config"].items():
             for i in value:
-                G.add_edge(key, i)
+                weightA = random.uniform(0, 1)
+                G.add_edge(key, i, weight=weightA)
         
         return G
-
-def listToString(s): 
-    
-    str1 = "" 
-    
-    for ele in s: 
-        str1 += ele  
-    
-    # return string  
-    return str1 
     
 # Funcion para manejar el cliente
 async def main(xmpp: Client):
     corriendo = True
+    origin = ""
+    destiny = ""
     while corriendo:
         print(""" ACCIÓN A TOMAR: 
         0. Mensajeria
@@ -202,27 +205,43 @@ async def main(xmpp: Client):
                             )  
                     elif xmpp.algoritmo == '2':
                         tableContact = []
-                        mensaje = "2|" + str(xmpp.jid) + "|" + str(destinatario) + "|" + str(xmpp.graph.number_of_nodes()) + "||" + str(xmpp.nodo) + "|" + str(mensaje)
+                        mensaje = "1|" + str(xmpp.jid) + "|" + str(destinatario) + "|" + str(xmpp.graph.number_of_nodes()) + "||" + str(xmpp.nodo) + "|" + str(mensaje)
                         print(xmpp)
                         graph = xmpp.graph
+                        for (p, d) in xmpp.graph.nodes(data=True):
+                            if (d['jid'] == xmpp.jid):
+                                origin = p
+                            if (d['jid'] == destinatario):
+                                destiny = p
                         
-                        """path=nx.all_pairs_shortest_path(graph)
-                        print(path["C"]["A"])"""
-                        for i in xmpp.nodes:
-                            """xmpp.send_message(
-                                mto=xmpp.names[i],
-                                mbody=mensaje,
-                                mtype='chat' 
-                            )"""
-                            tableContact.append([i, graph.nodes[i]["jid"]])
-                        print(tableContact)
-                        tableContent = ' '.join(str(e) for e in tableContact)
-                        for i in xmpp.nodes:
-                            xmpp.send_message(
-                                mto=xmpp.names[i],
-                                mbody=tableContent,
-                                mtype='chat' 
-                            ) 
+                        """print(origin)
+                        print(destiny) """
+                        path=nx.nx.shortest_path(xmpp.graph, origin, destiny)
+                        print("ESTE ES EL PATH")
+                        print(path)
+                         
+                        path.pop(0)
+                        sendto = path[0]
+                        mail = ""
+                        for (p, d) in xmpp.graph.nodes(data=True):
+                            print(p,d)
+                            if (p == sendto):
+                                mail = d['jid']
+
+                        print("A ESTE SE LO MANDO: "+mail)
+
+                                
+                        nei = '#'.join(str(e) for e in path)
+                        mensaje = mensaje+"*"+nei
+                        print(mensaje)
+                        xmpp.send_message(
+                            mto=mail,
+                            mbody=mensaje,
+                            mtype='chat' 
+                        )
+                        
+                        #print(path["C"]["A"])
+                        
                     else:
                         xmpp.send_message(
                             mto=destinatario,
