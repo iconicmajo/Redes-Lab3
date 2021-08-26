@@ -95,7 +95,9 @@ class Client(slixmpp.ClientXMPP):
                 print('Este es el metodo de reenviar de distance vector')
                 print(message)
                 sendto= message[6].split('*')
-                #sendto= sendto[1].split('#')
+                #sendto= message[7].split('*')
+                #sendto = sendto[1].split('#')
+                print('MANDAR A: ', sendto)
                 if message[2] == self.jid:
                     print("Este mensaje es para mi >> " +  message[6])
                 else:
@@ -108,7 +110,7 @@ class Client(slixmpp.ClientXMPP):
                             StrMessage = "|".join(message)
                             #for i in self.nodes:
                             self.send_message(
-                                    mto=sendto,
+                                    mto=sendto[0],
                                     mbody=StrMessage,
                                     mtype='chat' 
                                 )  
@@ -152,9 +154,7 @@ class Client(slixmpp.ClientXMPP):
                         )
             else:
                 difference = float(message[6]) - float(message[4])
-                # await aprint("La diferencia es de: ", difference)
                 self.graph.nodes[message[5]]['weight'] = difference
-                # print(self.graph.nodes.data())
         else:
             pass
 
@@ -203,6 +203,7 @@ class Tree():
 async def main(xmpp: Client):
     corriendo = True
     origin = ""
+    secuencia = 0
     destiny = ""
     while corriendo:
         print(""" ACCIÓN A TOMAR: 
@@ -213,6 +214,8 @@ async def main(xmpp: Client):
         if opcion == '0':
             destinatario = await ainput("¿A quién? ")
             activo = True
+            #shortest_path=nx.shortest_path(xmpp.graph, origin, destiny)
+            #path=shortest_path
             while activo:
                 mensaje = await ainput("Mensaje... ")
                 if (len(mensaje) > 0):
@@ -227,7 +230,6 @@ async def main(xmpp: Client):
                     elif xmpp.algoritmo == '2':
                         
                         mensaje = "1|" + str(xmpp.jid) + "|" + str(destinatario) + "|" + str(xmpp.graph.number_of_nodes()) + "||" + str(xmpp.nodo) + "|" + str(mensaje)
-                        #print(xmpp)
                         graph = xmpp.graph
                         for (p, d) in xmpp.graph.nodes(data=True):
                             if (d['jid'] == xmpp.jid):
@@ -238,11 +240,12 @@ async def main(xmpp: Client):
 
                         shortest_path=nx.shortest_path(xmpp.graph, origin, destiny)
                         path=shortest_path
+                        #mensaje = "1|" + str(xmpp.jid) + "|" + str(destinatario) + "|" + str(len(shortest_path)) + "||" + str(shortest_path) + "|" +str('distancia')+"|"+ str(mensaje)
                         print("ESTE ES EL PATH")
                         print(path)
+                        #No se esta eliminando el primer elemento :(
                         path.pop(0)
                         sendto = path[0]
-                        #print("NEXT: ", sendto)
                         mail = ""
                         for (p, d) in xmpp.graph.nodes(data=True):
                             print(p,d)
@@ -264,14 +267,16 @@ async def main(xmpp: Client):
                     elif xmpp.algoritmo == '3':
                         #Creando la tabla de estado
                         table_state=[]
-                        secuencia=0
+                        secuencia=secuencia+1
                         table_state.append(xmpp.jid)
                         table_state.append(secuencia)   
                         table_state.append(xmpp.nodes) 
+                        print('PROBANDOO')
+                        print(table_state)
                         for i in xmpp.nodes:
-                                xmpp.send_message(
+                            xmpp.send_message(
                                     mto=xmpp.names[i],
-                                    mbody=table_state,
+                                    mbody=str(table_state),
                                     mtype='chat' 
                                 )
 
