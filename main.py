@@ -276,7 +276,6 @@ if __name__ == "__main__":
                 nodes = topo["config"][key]
 
     graph = tree.newTree(topo, names)
-
     xmpp = Client(jid, pswd, alg, nodo, nodes, names["config"], graph)
     xmpp.connect() 
     xmpp.loop.run_until_complete(xmpp.connected_event.wait())
