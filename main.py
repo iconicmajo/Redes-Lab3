@@ -10,6 +10,7 @@ import getpass
 from aioconsole.stream import aprint
 from optparse import OptionParser
 from aioconsole import ainput
+from networkx.algorithms.shortest_paths.generic import shortest_path
 import yaml
 import networkx as nx
 import matplotlib.pyplot as plt
@@ -20,6 +21,10 @@ from datetime import datetime
 import slixmpp
 import networkx as nx
 import random
+import sys
+
+if sys.platform == 'win32' and sys.version_info >= (3, 8):
+    asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
 
 
 class Client(slixmpp.ClientXMPP):
@@ -69,6 +74,7 @@ class Client(slixmpp.ClientXMPP):
         await aprint(message)
 
         if message[0] == '1':
+            #FLOODING ALGORITHM
             print('Este es el metodo de reenviar')
             if self.algoritmo == '1':
                 if message[2] == self.jid:
@@ -93,11 +99,13 @@ class Client(slixmpp.ClientXMPP):
                 print('Este es el metodo de reenviar de distance vector')
                 print(message)
                 sendto= message[6].split('*')
-                #sendto= sendto[1].split('#')
+                #sendto= message[7].split('*')
+                #sendto = sendto[1].split('#')
+                print('MANDAR A: ', sendto)
                 if message[2] == self.jid:
                     print("Este mensaje es para mi >> " +  message[6])
                 else:
-                    print("ENTRA A ESTO QUE YO QUIERO QUE ENTRE")
+                    #print("ENTRA A ESTO QUE YO QUIERO QUE ENTRE")
                     if message[3] != '0':
                         lista = message[4].split(",")
                         if self.nodo not in lista:
@@ -106,14 +114,31 @@ class Client(slixmpp.ClientXMPP):
                             StrMessage = "|".join(message)
                             #for i in self.nodes:
                             self.send_message(
-                                    mto=sendto,
+                                    mto=sendto[0],
                                     mbody=StrMessage,
                                     mtype='chat' 
                                 )  
                     else:
                         pass
             elif self.algoritmo == '3':
-                pass
+            #Reenvio de paquetes para link state route utilizando flooding (En vez de que envie un mensaje tiene que mandar la tabla de estado)
+                if message[2] == self.jid:
+                    print("Este mensaje es para mi >> " +  message[6])
+                else:
+                    if message[3] != '0':
+                        lista = message[4].split(",")
+                        if self.nodo not in lista:
+                            message[4] = message[4] + "," + str(self.nodo)
+                            message[3] = str(int(message[3]) - 1)
+                            StrMessage = "|".join(message)
+                            for i in self.nodes:
+                                self.send_message(
+                                    mto=self.names[i],
+                                    mbody=StrMessage,
+                                    mtype='chat' 
+                                )  
+                    else:
+                        pass
         elif message[0] == '2':
             print('Este es el metodo de update')
             if self.algoritmo == '2':
@@ -133,9 +158,7 @@ class Client(slixmpp.ClientXMPP):
                         )
             else:
                 difference = float(message[6]) - float(message[4])
-                # await aprint("La diferencia es de: ", difference)
                 self.graph.nodes[message[5]]['weight'] = difference
-                # print(self.graph.nodes.data())
         else:
             pass
 
@@ -184,6 +207,7 @@ class Tree():
 async def main(xmpp: Client):
     corriendo = True
     origin = ""
+    secuencia = 0
     destiny = ""
     while corriendo:
         print(""" ACCIÓN A TOMAR: 
@@ -194,6 +218,8 @@ async def main(xmpp: Client):
         if opcion == '0':
             destinatario = await ainput("¿A quién? ")
             activo = True
+            #shortest_path=nx.shortest_path(xmpp.graph, origin, destiny)
+            #path=shortest_path
             while activo:
                 mensaje = await ainput("Mensaje... ")
                 if (len(mensaje) > 0):
@@ -208,7 +234,6 @@ async def main(xmpp: Client):
                     elif xmpp.algoritmo == '2':
                         
                         mensaje = "1|" + str(xmpp.jid) + "|" + str(destinatario) + "|" + str(xmpp.graph.number_of_nodes()) + "||" + str(xmpp.nodo) + "|" + str(mensaje)
-                        print(xmpp)
                         graph = xmpp.graph
                         for (p, d) in xmpp.graph.nodes(data=True):
                             if (d['jid'] == xmpp.jid):
@@ -217,12 +242,14 @@ async def main(xmpp: Client):
                                 destiny = p
                         
 
-                        path=nx.shortest_path(xmpp.graph, origin, destiny)
+                        shortest_path=nx.shortest_path(xmpp.graph, origin, destiny)
+                        path=shortest_path
+                        #mensaje = "1|" + str(xmpp.jid) + "|" + str(destinatario) + "|" + str(len(shortest_path)) + "||" + str(shortest_path) + "|" +str('distancia')+"|"+ str(mensaje)
                         print("ESTE ES EL PATH")
                         print(path)
+                        #No se esta eliminando el primer elemento :(
                         path.pop(0)
                         sendto = path[0]
-                        print("NEXT: ", sendto)
                         mail = ""
                         for (p, d) in xmpp.graph.nodes(data=True):
                             print(p,d)
@@ -240,8 +267,26 @@ async def main(xmpp: Client):
                             mbody=mensaje,
                             mtype='chat' 
                         )
-                        
-                        
+
+                    elif xmpp.algoritmo == '3':
+                        #Creando la tabla de estado
+                        table_state=[]
+                        secuencia=secuencia+1
+                        table_state.append(xmpp.jid)
+                        table_state.append(secuencia)   
+                        table_state.append(xmpp.nodes) 
+                        print('PROBANDOO')
+                        print(table_state)
+                        for i in xmpp.nodes:
+                            print('entro al ciclo'+ str(i) )
+                            xmpp.send_message(
+                                    mto=xmpp.names[i],
+                                    mbody=str(table_state),
+                                    mtype='chat' 
+                                )
+                            
+
+
                     else:
                         xmpp.send_message(
                             mto=destinatario,
@@ -266,7 +311,7 @@ if __name__ == "__main__":
     #introducción de parámetros
     jid = input("Ingrese su nombre de usuario: ")
     pswd = input("Ingrese su contraseña: ")
-    alg = input("Ingrese el algoritmo seleccionado (Flooding >> 1 | Distance vector routing >> 2): ") 
+    alg = input("Ingrese el algoritmo seleccionado (Flooding >> 1 | Distance vector routing >> 2 | Link state routing >> 3): ") 
 
     tree = Tree()
 
