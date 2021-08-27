@@ -21,6 +21,10 @@ from datetime import datetime
 import slixmpp
 import networkx as nx
 import random
+import sys
+
+if sys.platform == 'win32' and sys.version_info >= (3, 8):
+    asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
 
 
 class Client(slixmpp.ClientXMPP):
@@ -274,11 +278,13 @@ async def main(xmpp: Client):
                         print('PROBANDOO')
                         print(table_state)
                         for i in xmpp.nodes:
+                            print('entro al ciclo'+ str(i) )
                             xmpp.send_message(
                                     mto=xmpp.names[i],
                                     mbody=str(table_state),
                                     mtype='chat' 
                                 )
+                            
 
 
                     else:
