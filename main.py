@@ -31,15 +31,9 @@ class Client(slixmpp.ClientXMPP):
     def __init__(self, jid, password, algoritmo, nodo, nodes, names, graph):
         super().__init__(jid, password)
         self.received = set()
-        self.algoritmo = algoritmo
-        # self.topo = topo
-        self.names = names
-        self.graph = graph
-        # Cambio en vez de recibir toda la red recibe su nodo y nodos asociados
-        self.nodo = nodo
-        self.nodes = nodes
-        # self.nodos = nodos
-        self.schedule(name="echo", callback=self.echo_message, seconds=10, repeat=True)
+        self.initialize(jid, password, algoritmo, nodo, nodes, names, graph)
+
+        self.schedule(name="echo", callback=self.echo, seconds=10, repeat=True)
         self.schedule(name="update", callback=self.update_message, seconds=10, repeat=True)
         
         # Manejar los eventos
@@ -203,13 +197,9 @@ class Client(slixmpp.ClientXMPP):
         else:
             pass
 
-    def echo_message(self):
-        #print("schedule prueba echo")
+    def echo(self):
         for i in self.nodes:
-            # print(self.names[i])
-            now = datetime.now()
-            timestamp = datetime.timestamp(now)
-            mensaje = "3|" + str(self.jid) + "|" + str(self.names[i]) + "||"+ str(timestamp) +"|" + str(i) + "|"
+            mensaje = "3|" + str(self.jid) + "|" + str(self.names[i]) + "||"+ str(datetime.timestamp(datetime.now())) +"|" + str(i) + "|"
             self.send_message(
                         mto=self.names[i],
                         mbody=mensaje,
@@ -218,22 +208,26 @@ class Client(slixmpp.ClientXMPP):
 
     def update_message(self):
         
-        print("schedule prueba update")
+        #print("schedule prueba update")
         if self.algoritmo == '2':
             for i in self.nodes:
-                """for j in self.graph.neighbors(i):
-                    print(j)"""
                 self.graph.nodes[i]["neighbors"] = self.graph.neighbors(i)
             
-            #for n in self.graph.nodes:
+            #update graph with new weights
             neigh = nx.graph.get_node_attributes(self.graph,'neighbors')
 
         elif self.algoritmo == '3':
-            # Tipo | Nodo fuente | Nodo destino | Saltos | Distancia | Listado de nodos | Mensaje
-            # Esquema de mis vecinos
-            #print("ENTRA AL 3")
-            dataneighbors = [x for x in self.graph.nodes().data() if x[0] in self.nodes]
-            dataedges = [x for x in self.graph.edges.data('weight') if x[1] in self.nodes and x[0]==self.nodo]
+            print("***********************")
+            #dataneighbors = [x for x in self.graph.nodes().data() if x[0] in self.nodes]
+            for x in self.graph.nodes().data():
+                if x[0] in self.nodes:
+                    dataneighbors= x
+            #print(dataneighbors)
+            #dataedges = [x for x in self.graph.edges.data('weight') if x[1] in self.nodes and x[0]==self.nodo]
+            for x in self.graph.edges.data('weight'):
+                if x[1] in self.nodes and x[0]==self.nodo:
+                    dataedges = x
+            #print(dataedges)
             StrNodes = str(dataneighbors) + "-" + str(dataedges)
             #print(StrNodes)
             for i in self.nodes:
@@ -243,6 +237,15 @@ class Client(slixmpp.ClientXMPP):
                         mbody=update_msg,
                         mtype='chat' 
                     )
+
+    def initialize(self, jid, password, algoritmo, nodo, nodes, names, graph):
+        self.algoritmo = algoritmo
+        # self.topo = topo
+        self.names = names
+        self.graph = graph
+        # Cambio en vez de recibir toda la red recibe su nodo y nodos asociados
+        self.nodo = nodo
+        self.nodes = nodes
 
 class Tree():
     def newTree(self, topo, names):
@@ -266,12 +269,8 @@ async def main(xmpp: Client):
     secuencia = 0
     destiny = ""
     while corriendo:
-        print(""" ACCIÓN A TOMAR: 
-        0. Mensajeria
-        1. Salir
-        """)
-        opcion = await ainput("¿Qué acción deseas realizar?: ")
-        if opcion == '0':
+        opcion = await ainput("¿Deseas abrir una conversación? (y: sí | n: o): ")
+        if opcion == 'y':
             destinatario = await ainput("¿A quién? ")
             activo = True
             #shortest_path=nx.shortest_path(xmpp.graph, origin, destiny)
@@ -328,23 +327,9 @@ async def main(xmpp: Client):
                     #print("A VER SI ENTRA")
 
                     elif (xmpp.algoritmo == '3'):
-                        #print("AQUI ANDO Y SÍ ENTRA")
-                        #Creando la tabla de estado
-                        """table_state=[]
-                        secuencia=secuencia+1
-                        table_state.append(xmpp.jid)
-                        table_state.append(secuencia)   
-                        table_state.append(xmpp.nodes) 
-                        print('PROBANDOO')
-                        print(table_state)
-                        for i in xmpp.nodes:
-                            print('entro al ciclo'+ str(i) )
-                            xmpp.send_message(
-                                    mto=xmpp.names[i],
-                                    mbody=str(table_state),
-                                    mtype='chat' 
-                                )"""
                         target = [x for x in xmpp.graph.nodes().data() if x[1]["jid"] == destinatario]
+                        print("target"*25)
+                        print(target)
                         mensaje = "1|" + str(xmpp.jid) + "|" + str(destinatario) + "|" + str(xmpp.graph.number_of_nodes()) + "||" + str(xmpp.nodo) + "|" + str(mensaje)
                         shortest = nx.shortest_path(xmpp.graph, source=xmpp.nodo, target=target[0][0])
                         if len(shortest) > 0:
