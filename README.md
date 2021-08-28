@@ -26,5 +26,5 @@ This project generates a client that allows communication with an XMPP server wi
 
 Run from command line as follows:  
                             ```python
-                            python main.py
+                            main.py
                             ``` 
