@@ -1,22 +1,23 @@
 """
-María José Castro
-Jennifer Sandoval
-María Inés Vásquez
-Laboratorio 3
+Universidad del Valle de Guatemala
+Laboratorio 3 - Redes 
+Authors:
+    María José Castro
+    Jennifer Sandoval
+    María Inés Vásquez
+Description:
+    The following program aims to simulate the sending of messages using 
+    the routing algorithms flooding, distance vector routing and link state routing
 """
 
-import logging
 import getpass
-from aioconsole.stream import aprint
-from optparse import OptionParser
-from aioconsole import ainput
 from networkx.algorithms.shortest_paths.generic import shortest_path
 import yaml
+from aioconsole import ainput
 import networkx as nx
 import matplotlib.pyplot as plt
 import asyncio
 import logging
-from aioconsole import aprint
 from datetime import datetime
 import slixmpp
 import networkx as nx
@@ -36,11 +37,11 @@ class Client(slixmpp.ClientXMPP):
         self.schedule(name="echo", callback=self.echo, seconds=10, repeat=True)
         self.schedule(name="update", callback=self.tree_update, seconds=10, repeat=True)
         
-        # Manejar los eventos
+        # Handle events
         self.connected_event = asyncio.Event()
         self.presences_received = asyncio.Event()
 
-        # Manejar inicio de sesion y mensajes
+        # Manage login and messages
         self.add_event_handler('session_start', self.start)
         self.add_event_handler('message', self.message)
         
@@ -50,18 +51,18 @@ class Client(slixmpp.ClientXMPP):
         self.register_plugin('xep_0199') # Ping
 
 
-    #Inicialización de cliente
+    # Client initialization
     async def start(self, event):
         self.send_presence() 
         await self.get_roster()
         self.connected_event.set()
 
-    # Convo con usuarios
+    # Receiving messages
     async def message(self, msg):
         if msg['type'] in ('normal', 'chat'):
             await self.forward_msg(msg['body'])
 
-    # Esta funcion la pueden usar para reenviar sus mensajes
+    # This function can be used to forward your messages
     async def forward_msg(self, msg):
         message = msg.split('|')
         if message[0] == 'msg':
@@ -89,10 +90,17 @@ class Client(slixmpp.ClientXMPP):
                 #DISTANCE VECTOR: SE LE MANDA AL VECINO CON DISTANCIA MÁS CORTA
                 """print('Este es el metodo de reenviar de distance vector')
                 print(message)"""
+                print(message)
                 sendto= message[6].split('*')
                 #sendto= message[7].split('*')
-                #sendto = sendto[1].split('#')
-                print('MANDAR A: ', sendto)
+                sendto = sendto[1].split('#')
+                sendNode=sendto[1]
+                
+                for (p, d) in xmpp.graph.nodes(data=True):
+                    if (p == sendNode):
+                        jid_receiver = d['jid']
+                print('MANDAR A: ', jid_receiver)
+
                 if message[2] == self.jid:
                     print("Este mensaje es para mi >> " +  message[6])
                 else:
@@ -106,7 +114,7 @@ class Client(slixmpp.ClientXMPP):
                             StrMessage = "|".join(message)
                             #for i in self.nodes:
                             self.send_message(
-                                    mto=sendto[0],
+                                    mto=jid_receiver,
                                     mbody=StrMessage,
                                     mtype='chat' 
                                 )  
@@ -114,7 +122,7 @@ class Client(slixmpp.ClientXMPP):
                     else:
                         pass
             elif self.algoritmo == '3':
-            #Reenvio de paquetes para link state route utilizando flooding (En vez de que envie un mensaje tiene que mandar la tabla de estado)
+            # Forwarding state tables
                 if message[2] == self.jid:
                     print("Este mensaje es para mi >> " +  message[6])
                 else:
@@ -199,11 +207,11 @@ class Tree():
     """
     def newTree(self, topo, names):
         G = nx.Graph()
-        #agregar nodo
+        # Adding nodes
         for key, value in names["config"].items():
             G.add_node(key, jid=value)
             
-        #agregar vertice
+        # Adding edges and assigning different weights
         for key, value in topo["config"].items():
             for i in value:
                 weightA = random.uniform(0, 1)
@@ -211,22 +219,17 @@ class Tree():
         
         return G
     
-# Funcion para manejar el cliente
+# Function to manage the client
 async def main(xmpp: Client):
     mainexecute = True
     origin = ""
-    secuencia = 0
     destiny = ""
     while mainexecute:
         choice = await ainput("¿Deseas abrir una conversación? (y: sí | n: o): ")
         if choice == 'y':
             to_user = await ainput("¿A quién? (name@alumchat.xyz)>>> ")
             active = True
-            #shortest_path=nx.shortest_path(xmpp.graph, origin, destiny)
-            #path=shortest_path
             while active:
-                """print("ESTE ES EL ALG")
-                print(xmpp.algoritmo)"""
                 mensaje = await ainput("Mensaje >>> ")
                 if (len(mensaje) > 0):
                     if (xmpp.algoritmo == '1'):
@@ -253,35 +256,28 @@ async def main(xmpp: Client):
                         #mensaje = "msg|" + str(xmpp.jid) + "|" + str(to_user) + "|" + str(len(shortest_path)) + "||" + str(shortest_path) + "|" +str('distancia')+"|"+ str(mensaje)
                         print("ESTE ES EL PATH")
                         print(path)
-                        #No se esta eliminando el primer elemento :(
                         path.pop(0)
                         sendto = path[0]
                         mail = ""
                         for (p, d) in xmpp.graph.nodes(data=True):
-                            #print(p,d)
                             if (p == sendto):
                                 mail = d['jid']
 
                         print("A ESTE SE LO MANDO: "+mail)
 
-                                
                         nei = '#'.join(str(e) for e in path)
                         mensaje = mensaje+"*"+nei
-                        #print(mensaje)
                         xmpp.send_message(
                             mto=mail,
                             mbody=mensaje,
                             mtype='chat' 
                         )
-                    #print("A VER SI ENTRA")
 
                     elif (xmpp.algoritmo == '3'):
                         target=[]
                         for x in xmpp.graph.nodes().data():
                             if x[1]["jid"] == to_user:
                                 target.append(x)
-                        """print("target"*25)
-                        print(target)"""
                         mensaje = "msg|" + str(xmpp.jid) + "|" + str(to_user) + "|" + str(xmpp.graph.number_of_nodes()) + "||" + str(xmpp.nodo) + "|" + str(mensaje)
                         shortest = nx.shortest_path(xmpp.graph, source=xmpp.nodo, target=target[0][0])
                         if len(shortest) > 0:
@@ -290,10 +286,6 @@ async def main(xmpp: Client):
                                 mbody=mensaje,
                                 mtype='chat' 
                             )
-                        
-                            
-
-
                     else:
                         xmpp.send_message(
                             mto=to_user,
@@ -309,9 +301,9 @@ async def main(xmpp: Client):
 
 if __name__ == "__main__":
     """
-    Main donde se lee y carga la topografía y nombre de usuarios para red de 
-    comunicación y el usuario selecciona el algoritmo de enrutamiento ha utilizar 
-    para el reenvío de mensajes
+    Main function where the topography and user name for the network is read and loaded.
+    communication and the user selects the routing algorithm to use
+    for message forwarding
     """
     lector_topo = open("topo.txt", "r", encoding="utf8")
     lector_names = open("names.txt", "r", encoding="utf8")
@@ -320,9 +312,9 @@ if __name__ == "__main__":
     topo = yaml.load(topo_string, Loader=yaml.FullLoader)
     names = yaml.load(names_string, Loader=yaml.FullLoader)
 
-    #introducción de información de usuario
+    # Entering user information
     jid = input("Usuario (name@alumchat.xyz)>>> ")
-    pswd = input("Contraseña>>> ")
+    pswd = getpass("Contraseña>>> ")
     alg = input("Algoritmo de enrutamiento seleccionado (Flooding >> 1 | Distance vector routing >> 2 | Link state routing >> 3): ") 
 
     tree = Tree()
