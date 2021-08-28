@@ -24,10 +24,11 @@ import random
 from getpass import getpass
 import sys
 
+#Small fix that allows the program to run on windows operating systems due to an error with the asyncio library
 if sys.platform == 'win32' and sys.version_info >= (3, 8):
     asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
 
-
+#Class that instantiates a client on an xmpp server
 class Client(slixmpp.ClientXMPP):
     def __init__(self, jid, password, algoritmo, nodo, nodes, names, graph):
         super().__init__(jid, password)
@@ -117,6 +118,7 @@ class Client(slixmpp.ClientXMPP):
                     else:
                         pass
             elif self.algoritmo == '3':
+                # Link State Routing
                 print('\nUsing the link state routing algorithm')
                 # Forwarding state tables
                 if message[2] == self.jid:
@@ -145,6 +147,7 @@ class Client(slixmpp.ClientXMPP):
                     else:
                         pass
         elif message[0] == 'echo':
+            #This function allows to know distance between adjacent nodes
             if message[6] == '':
                 now = datetime.now()
                 timestamp = datetime.timestamp(now)
@@ -169,6 +172,7 @@ class Client(slixmpp.ClientXMPP):
                         mtype='chat' 
                     )
 
+    #Function that allows to store the updated information to the graph
     def tree_update(self):
         if self.algoritmo == '2':
             for i in self.nodes:
@@ -193,7 +197,7 @@ class Client(slixmpp.ClientXMPP):
                         mbody=update_msg,
                         mtype='chat' 
                     )
-
+    #initialization of the main arguments of the graph
     def initialize(self, jid, password, algoritmo, nodo, nodes, names, graph):
         self.algoritmo = algoritmo
         self.names = names
@@ -201,6 +205,7 @@ class Client(slixmpp.ClientXMPP):
         self.nodo = nodo
         self.nodes = nodes
 
+#Data structure in which the network topology is stored
 class Tree():
     """
    Class in which the tree of the user communication network is instantiated
@@ -241,14 +246,15 @@ async def main(xmpp: Client):
                                 mtype='chat' 
                             )  
                     elif (xmpp.algoritmo == '2'):
-                        
                         mensaje = "msg|" + str(xmpp.jid) + "|" + str(to_user) + "|" + str(xmpp.graph.number_of_nodes()) + "||" + str(xmpp.nodo) + "|" + str(mensaje)
                         graph = xmpp.graph
+                        # Relating node assignments to JID addresses
                         for (p, d) in xmpp.graph.nodes(data=True):
                             if (d['jid'] == xmpp.jid):
                                 origin = p
                             if (d['jid'] == to_user):
                                 destiny = p
+                        # Getting the shortest path
                         shortest_path=nx.shortest_path(xmpp.graph, origin, destiny)
                         path=shortest_path
                         print("\nPath:")
@@ -262,6 +268,7 @@ async def main(xmpp: Client):
 
                         print("\nSending to: "+mail)
 
+                        # Only adding remaining nodes to the message
                         nei = '#'.join(str(e) for e in path)
                         mensaje = mensaje+"*"+nei
                         xmpp.send_message(
@@ -276,6 +283,7 @@ async def main(xmpp: Client):
                             if x[1]["jid"] == to_user:
                                 target.append(x)
                         mensaje = "msg|" + str(xmpp.jid) + "|" + str(to_user) + "|" + str(xmpp.graph.number_of_nodes()) + "||" + str(xmpp.nodo) + "|" + str(mensaje)
+                        # Getting the shortest path
                         shortest = nx.shortest_path(xmpp.graph, source=xmpp.nodo, target=target[0][0])
                         if len(shortest) > 0:
                             xmpp.send_message(

@@ -5,9 +5,9 @@
 
 ### Authors
 
-Jennifer Sandoval 
-María José Castro
-María Inés Vasquez
+Jennifer Sandoval   
+María José Castro  
+María Inés Vasquez  
 
 ### Description
  
